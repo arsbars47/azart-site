@@ -1,0 +1,229 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/*  Design tokens — светлая «морская» палитра                          */
+/* ------------------------------------------------------------------ */
+@theme {
+  /* Палитра */
+  --color-accent: #ffa62b; /* главный акцент: кнопки, выделение */
+  --color-accent-deep: #e8890c;
+  --color-navy: #2e5aa7; /* основной синий: заголовки, плашки */
+  --color-navy-deep: #1b3566; /* тёмный синий для основного текста */
+  --color-sky: #86c5ff; /* светлый фон */
+  --color-sky-soft: #d9eeff;
+  --color-paper: #f8e6a0; /* светлые карточки */
+  --color-paper-soft: #fdf7e1; /* рамка полароида */
+  --color-jacket: #4a4f3b; /* бойцовка: тёмная олива-хаки */
+  --color-jacket-deep: #2b2e22; /* швы, тени, изнанка воротника */
+  --color-jacket-light: #7d8463; /* строчка, пуговицы */
+
+  /* Шрифты (переменные задаёт next/font в layout.tsx) */
+  --font-sans: var(--font-inter), system-ui, "Segoe UI", Roboto, Arial, sans-serif; /* весь текст → font-sans */
+  --font-display: var(--font-eugusto), system-ui, "Segoe UI", Arial, sans-serif; /* h1/h2 и акценты → font-display */
+  --font-accent: var(--font-ura-bum-bum), system-ui, "Segoe UI", Arial, sans-serif; /* рукописные подписи → font-accent */
+
+  /* Ширина левого меню на десктопе */
+  --spacing-sidebar: 16rem;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+    /* у Eugusto и Ura Bum Bum одно начертание — не даём браузеру
+       рисовать искусственный bold из классов font-bold/font-black
+       (Inter — вариативный, у него настоящие жирные начертания) */
+    font-synthesis-weight: none;
+  }
+
+  body {
+    @apply bg-sky font-sans text-navy-deep antialiased;
+    min-height: 100svh;
+  }
+
+  /* Декоративный шрифт — только у главных заголовков. Мелким служебным h2
+     (подписи в подвале и т. п.) возвращаем основной шрифт классом font-sans */
+  h1,
+  h2 {
+    @apply font-display;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-navy-deep);
+  }
+
+  /* якоря не прячутся под плавающей кнопкой-бургером */
+  section[id] {
+    scroll-margin-top: 4rem;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Плёночная тактильность: зерно + виньетка                           */
+/* ------------------------------------------------------------------ */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Зерно (grain) — SVG-шум поверх всего сайта */
+body::before {
+  z-index: 100;
+  opacity: 0.08;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Едва заметная синеватая виньетка по краям */
+body::after {
+  z-index: 99;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgb(27 53 102 / 0.1) 85%,
+    rgb(27 53 102 / 0.22) 100%
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Звёздное небо с параллаксом (components/layout/Starfield.tsx)      */
+/*  Чистый CSS: scroll-driven animations двигают слои на compositor-   */
+/*  потоке, без JS-обработчиков скролла. Где animation-timeline не     */
+/*  поддерживается, звёзды просто стоят на месте.                      */
+/* ------------------------------------------------------------------ */
+.starfield {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgb(255 255 255 / 0.35), transparent 70%),
+    linear-gradient(180deg, var(--color-sky) 0%, #a6d4ff 55%, var(--color-sky-soft) 100%);
+}
+
+.starfield__layer {
+  --travel: 0px;
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(100% + var(--travel));
+  background-repeat: repeat;
+  will-change: transform;
+}
+
+/* дальние — мелкие точки, движутся медленнее всех */
+.starfield__layer--far {
+  --travel: 160px;
+  background-image: url("/stars-far.svg");
+  background-size: 220px 220px;
+  opacity: 0.8;
+}
+
+/* средние — точки покрупнее */
+.starfield__layer--mid {
+  --travel: 360px;
+  background-image: url("/stars-mid.svg");
+  background-size: 340px 340px;
+}
+
+/* ближние — четырёхлучевые звёздочки, движутся быстрее всех */
+.starfield__layer--near {
+  --travel: 720px;
+  background-image: url("/stars-near.svg");
+  background-size: 520px 520px;
+}
+
+/* мерцающие звёздочки едут вместе с ближним слоем */
+.starfield__layer--near::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/stars-twinkle.svg");
+  background-size: 520px 520px;
+  animation: star-twinkle 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes star-twinkle {
+  from { opacity: 0.15; }
+  to { opacity: 1; }
+}
+
+@keyframes star-parallax {
+  to { transform: translate3d(0, calc(var(--travel) * -1), 0); }
+}
+
+@supports (animation-timeline: scroll()) {
+  .starfield__layer {
+    animation: star-parallax linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .starfield__layer,
+  .starfield__layer--near::after { animation: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Утилиты                                                            */
+/* ------------------------------------------------------------------ */
+
+/* Перфорация фотоплёнки: ряд скруглённых «окошек» */
+@utility film-perf {
+  height: 0.75rem;
+  background-image: radial-gradient(
+    circle at center,
+    rgb(217 238 255 / 0.9) 0 0.22rem,
+    transparent 0.24rem
+  );
+  background-size: 1.1rem 100%;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+/* Бумажная фактура для светлых поверхностей */
+@utility paper-texture {
+  background-image:
+    radial-gradient(rgb(46 90 167 / 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(255 255 255 / 0.4), transparent 40%);
+  background-size: 4px 4px, 100% 100%;
+}
+
+/* Кусочек голубого малярного скотча */
+@utility tape {
+  background: rgb(134 197 255 / 0.65);
+  box-shadow: 0 1px 2px rgb(27 53 102 / 0.15);
+  clip-path: polygon(3% 0, 97% 4%, 100% 92%, 1% 100%);
+}
+
+/* Место под фото: морской градиент + лёгкая штриховка */
+@utility photo-placeholder {
+  background-image:
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.12) 0 12px, transparent 12px 24px),
+    linear-gradient(135deg, var(--color-sky), var(--color-navy));
+}
+
+/* Скрыть ползунок скроллбара, оставив прокрутку */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Диагональная штриховка для пустых областей */
+@utility placeholder-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgb(255 255 255 / 0.12) 0 12px,
+    transparent 12px 24px
+  );
+}

@@ -1,0 +1,30 @@
+// Схема базы данных сайта (SQLite-файл, путь задаёт DATABASE_URL в .env).
+// После изменения схемы: npx prisma migrate dev --name <что-изменили>
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Аккаунт бойца. Открытой регистрации нет — аккаунты создаёт админ:
+/// npm run user -- create --login <логин> --name "<Имя Фамилия>"
+model User {
+  id           String   @id @default(cuid())
+  /// логин для входа, хранится в нижнем регистре
+  login        String   @unique
+  name         String
+  /// bcrypt-хеш, сам пароль нигде не хранится
+  passwordHash String
+  quote        String   @default("")
+  /// кирпичики на воротнике бойцовки — по одному за отработанную целину (0…MAX_BRICKS из lib/bricks.ts)
+  bricksCount  Int      @default(0)
+  /// слаг публичной карточки бойца (/members/<slug>) из lib/data.ts —
+  /// если задан, цитата и кирпичики из профиля показываются на этой странице
+  memberSlug   String?  @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
